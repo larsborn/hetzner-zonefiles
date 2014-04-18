@@ -68,14 +68,15 @@ def _javascript_to_zoneid(s):
     return int(m.group(1))
 
 def print_usage():
-    print '%s USERNAME PASSWORD' % sys.argv[0]
+    print 'Usage: %s [download|update] <username> <password>' % sys.argv[0]
 
-if len(sys.argv) != 3:
+if len(sys.argv) != 4:
     print_usage()
     exit()
 
-username = sys.argv[1]
-password = sys.argv[2]
+command  = sys.argv[1]
+username = sys.argv[2]
+password = sys.argv[3]
 
 log('Logging in...')
 cookies = login(username, password)
@@ -84,20 +85,27 @@ if not cookies:
     print 'Cannot login'
     exit()
 
-log('Requesting list of zonefiles...')
-list = list_zonefile_ids(cookies)
+if command == 'download':
 
-log('Found %i zonefiles.' % len(list))
-for zoneid, domain in list.iteritems():
+    log('Requesting list of zonefiles...')
+    list = list_zonefile_ids(cookies)
 
-    log('Loading zonefile for %s...' % domain)
-    zonefile = get_zonefile(cookies, zoneid)
-    
-    filename = os.path.join(zonefiledir, '%i_%s.txt' % (zoneid, domain))
-    log('Saving zonefile to %s...' % filename)
-    f = open(filename, 'w+')
-    f.write(zonefile)
-    f.close()
-    
+    log('Found %i zonefiles.' % len(list))
+    for zoneid, domain in list.iteritems():
+
+        log('Loading zonefile for %s...' % domain)
+        zonefile = get_zonefile(cookies, zoneid)
+        
+        filename = os.path.join(zonefiledir, '%i_%s.txt' % (zoneid, domain))
+        log('Saving zonefile to %s...' % filename)
+        f = open(filename, 'w+')
+        f.write(zonefile)
+        f.close()
+elif command == 'update':
+    pass
+else:
+    log('Invalid command "%s"' % command)
+    print_usage()
+
 log('Logging out')
 logout(cookies)
