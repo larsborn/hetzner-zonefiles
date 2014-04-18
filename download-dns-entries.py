@@ -46,6 +46,7 @@ def list_zonefile_ids(cookies):
             ret[zoneid] = domain
         
         page += 1
+
     return ret
 
 def get_zonefile(cookies, id):
@@ -54,17 +55,32 @@ def get_zonefile(cookies, id):
     soup = BeautifulSoup(r.text, convertEntities=BeautifulSoup.HTML_ENTITIES)
     textarea = soup.find('textarea')
     zonefile = textarea.renderContents()
+
     return zonefile
+
+def write_zonefile(cookies, id, zonefile):
+    update_url = base_url + '/dns/update'
+    r = requests.post(
+        update_url, 
+        cookies=cookies, 
+        data={'id': id, 'zonefile': zonefile}
+    )
+    
+    # ugly: the hetzner status code is always 200 (delivering the login form
+    # as an "error message")
+    return 'Vielen Dank' in r.text
     
 def logout(cookies):
     logout_url = base_url + '/login/logout'
     r = requests.get(logout_url, cookies=cookies)
+    
     return r.status_code == 200
 
 def _javascript_to_zoneid(s):
     r = re.compile('\'(\d+)\'')
     m = r.search(s)
     if not m: return False
+    
     return int(m.group(1))
 
 def print_usage():
@@ -102,7 +118,20 @@ if command == 'download':
         f.write(zonefile)
         f.close()
 elif command == 'update':
-    pass
+    for file in os.listdir(zonefiledir):
+        domainid = int(file.split('_')[0])
+        filename = os.path.join(zonefiledir, file)
+        
+        log('Updating zonefile %s' % filename)
+        f = open(filename)
+        zonefile = ''.join(f.readlines())
+        f.close()
+        
+        success = write_zonefile(cookies, domainid, zonefile)
+        if success: 
+            log('Update successfull.')
+        else:
+            log('Error updating')
 else:
     log('Invalid command "%s"' % command)
     print_usage()
